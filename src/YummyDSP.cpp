@@ -21,14 +21,19 @@ YummyDSP::~YummyDSP() {
 
 void YummyDSP::begin(int sampleRate) {
   	fs = sampleRate;
-	div_fs = 1.0f / (float)sampleRate;
 }
 
 void YummyDSP::addNode(AudioNode *node) {
 	nodelist.push_back(node);
 }
 
-float IRAM_ATTR YummyDSP::process(float x, int channel) {
+// Junon
+void YummyDSP::clear() {
+	nodelist.clear();
+}
+
+
+float YummyDSP::process(float x, int channel) {
 	float y = x;
 	// process all nodes
 	std::list<AudioNode *>::iterator it;

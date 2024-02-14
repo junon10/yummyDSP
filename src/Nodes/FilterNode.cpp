@@ -7,7 +7,6 @@
  */
 
 #include <Nodes/FilterNode.h>
-#include "dspHelpers.h"
 
 FilterNode::FilterNode() {
 	; // be sure to call begin(fs)
@@ -23,9 +22,9 @@ FilterNode::~FilterNode() {
 	}
 }
 
+
 void FilterNode::begin(int sampleRate, int channelCount) {
 	fs = sampleRate;
-	div_fs = 1.0f / (float)sampleRate;
 	interpolator = new Interpolator(fs, 50);
 
 	// reset states
@@ -35,6 +34,7 @@ void FilterNode::begin(int sampleRate, int channelCount) {
 		filterCoeffs[i][kTarget] = 0;
 	}
 }
+
 
 
 //
@@ -47,62 +47,77 @@ void FilterNode::setupFilter(int type, float f0, float q, bool smooth, bool rese
 	//
 	this->f0 = f0;
 	this->type = type;
-	this->q = q; // FIXME: why does it crackle?
+	this->q = q; 
 	
+    float frequency = f0;
+    float AUDIO_SAMPLE_RATE_EXACT = fs; 
+    
 	// TOD=: gain
 	//	float dBgain = 0;
 	//  float A = sqrt(pow(10, dBgain / 20));
-	float w0 = 2 * PI * f0 / fs;
-	
-	float sinW0, cosW0;
-//	extern inline void fast_sincos(float x, float* sinRes, float* cosRes);
-	fast_sincos(w0, &sinW0, &cosW0);
-	float alpha = sinW0 / (2.0f * q); 		// case: Q
-	// float alpha = sinW0*sinh( ln(2)/2 * BW * w0/sin(w0) ) // case: BW
-	
-	float a0, a1, a2;
-	float b0, b1, b2;
-	
+
+	float w0 = 0; 
+	float cosW0 = 0;
+	float sinW0 = 0;
+	float alpha = 0;
+    double scale = 0;
+    float coeff[5];
+
+
 	switch (type) {
 		case LPF: //  H(s) = 1 / (s^2 + s/Q + 1)
-			b0 = (1.f - cosW0) * 0.5f;
-			b1 = 1.f - cosW0;
-			b2 = (1.f - cosW0) * 0.5f;
-			a0 = 1.f + alpha;
-			a1 = -2.f * cosW0;
-			a2 = 1.f - alpha;
+		    //int coeff[5];
+		    w0 = frequency * (2 * 3.141592654 / AUDIO_SAMPLE_RATE_EXACT);
+		    sinW0 = sin(w0);
+		    alpha = sinW0 / ((double)q * 2.0);
+		    cosW0 = cos(w0);
+		    //double scale = 1073741824.0 / (1.0 + alpha);
+		    scale = 1.0 / (1.0+alpha); // which is equal to 1.0 / a0
+		    /* b0 */ coeff[0] = ((1.0 - cosW0) / 2.0) * scale;
+		    /* b1 */ coeff[1] = (1.0 - cosW0) * scale;
+		    /* b2 */ coeff[2] = coeff[0];
+		    /* a1 */ coeff[3] = (-2.0 * cosW0) * scale;
+		    /* a2 */ coeff[4] = (1.0 - alpha) * scale;
 			break;
 			
 		case HPF: //  H(s) = s^2 / (s^2 + s/Q + 1)
-			b0 = (1.f + cosW0) * 0.5f;
-			b1 = -(1.f + cosW0);
-			b2 = (1.f + cosW0) * 0.5f;
-			a0 = 1.f + alpha;
-			a1 = -2.f * cosW0;
-			a2 = 1.f - alpha;
+			//int coeff[5];
+		    w0 = frequency * (2 * 3.141592654 / AUDIO_SAMPLE_RATE_EXACT);
+		    sinW0 = sin(w0);
+		    alpha = sinW0 / ((double)q * 2.0);
+		    cosW0 = cos(w0);
+		    scale = 1.0 / (1.0+alpha); // which is equal to 1.0 / a0
+		    /* b0 */ coeff[0] = ((1.0 + cosW0) / 2.0) * scale;
+		    /* b1 */ coeff[1] = -(1.0 + cosW0) * scale;
+		    /* b2 */ coeff[2] = coeff[0];
+		    /* a1 */ coeff[3] = (-2.0 * cosW0) * scale;
+		    /* a2 */ coeff[4] = (1.0 - alpha) * scale;
 			break;
 			
 		case BPF: //  H(s) = (s/Q) / (s^2 + s/Q + 1)      (constant 0 dB peak gain)
-			b0 = alpha;
-			b1 = 0;
-			b2 = -alpha;
-			a0 = 1 + alpha;
-			a1 = -2 * cosW0;
-			a2 = 1 - alpha;
+		//int coeff[5];
+		     w0 = frequency * (2 * 3.141592654 / AUDIO_SAMPLE_RATE_EXACT);
+		     sinW0 = sin(w0);
+		     alpha = sinW0 / ((double)q * 2.0);
+		     cosW0 = cos(w0);
+		     scale = 1.0 / (1.0+alpha); // which is equal to 1.0 / a0
+		     /* b0 */ coeff[0] = alpha * scale;
+		     /* b1 */ coeff[1] = 0;
+		     /* b2 */ coeff[2] = (-alpha) * scale;
+		     /* a1 */ coeff[3] = (-2.0 * cosW0) * scale;
+		     /* a2 */ coeff[4] = (1.0 - alpha) * scale;
 			break;
 			
 		default:
-			b0 = b1 = b2 = 0;
-			a0 = a1 = a2 = 0;
+            for (int i = 0; i < 5; i++) coeff[i] = 0;
 			break;
 	}
-	float div_a0 = one_div(a0);
 	
-	filterCoeffs[cB0][kTarget] = b0 * div_a0;
-	filterCoeffs[cB1][kTarget] = b1 * div_a0;
-	filterCoeffs[cB2][kTarget] = b2 * div_a0;
-	filterCoeffs[cA1][kTarget] = a1 * div_a0;
-	filterCoeffs[cA2][kTarget] = a2 * div_a0;
+	filterCoeffs[cB0][kTarget] = coeff[0];
+	filterCoeffs[cB1][kTarget] = coeff[1];
+	filterCoeffs[cB2][kTarget] = coeff[2];
+	filterCoeffs[cA1][kTarget] = coeff[3];
+	filterCoeffs[cA2][kTarget] = coeff[4];
 	
 	//	ESP_LOGI(TAG, "coeffs: %.5f %.5f %.5f %.5f %.5f %.5f", a0, a1, a2, b0, b1, b2);
 	
@@ -117,26 +132,50 @@ void FilterNode::setupFilter(int type, float f0, float q, bool smooth, bool rese
 }
 
 
+// Reconfigura os filtros em tempo de execução, Junon
+void FilterNode::resetFilter(int type, float f0, float q, bool smooth, bool resetStates)
+{
+  if(interpolator) {
+	delete interpolator;
+  }
+
+  interpolator = new Interpolator(fs, 50);
+
+  // reset states
+  memset(filterStates, 0, sizeof(filterStates));
+  for (int i = 0; i < 5; i++) {
+	filterCoeffs[i][kCurrent] = 0;
+	filterCoeffs[i][kTarget] = 0;
+  }
+
+  setupFilter(type, f0, q, smooth, resetStates);
+}
+
+
 //
 // Apply filter changes
 //
 void FilterNode::updateFilter(float f0) {
 	float f = f0;
-	
+
+    /*	
 	// TODO: find smarter solution, unstable when going to low
 	switch(type) {
 		case HPF: f = constrain(f0, 1.f, fs*0.5f); break;
 		case LPF: f = constrain(f0, 50.f, fs*0.5f); break;
 		default: f = constrain(f0, 20.f, fs*0.5f); break;
 	}
-	
-	this->f0 = f;
+    
+    //this->f0 = f;
+
 	// TODO: filter type?
-	setupFilter(type, f, q, true, false); // FIXME:
+	setupFilter(type, f, q, true, false); // FIXME:    
+
 	// calc ramp deltas? again?
-	for (int i = 0; i < 5; i++) {
-		interpolator->add(&filterCoeffs[i][kCurrent], filterCoeffs[i][kTarget]);
-	}
+	//for (int i = 0; i < 5; i++) {
+	//	interpolator->add(&filterCoeffs[i][kCurrent], filterCoeffs[i][kTarget]);
+	//}
+    */
 }
 
 
@@ -168,8 +207,8 @@ float FilterNode::processSample(float sample, int channel) {
 	
 	// Transposed DF 2:
 	float y = filterCoeffs[cB0][kCurrent] * x + filterStates[0][channel];
-	filterStates[0][channel] = filterCoeffs[cB1][kCurrent] * x - filterCoeffs[cA1][kCurrent] * y + filterStates[1][channel] + 1e-30f;
-	filterStates[1][channel] = filterCoeffs[cB2][kCurrent] * x - filterCoeffs[cA2][kCurrent] * y + 1e-30f; // adding TINY fixes some issues
+	filterStates[0][channel] = filterCoeffs[cB1][kCurrent] * x - filterCoeffs[cA1][kCurrent] * y + filterStates[1][channel];
+	filterStates[1][channel] = filterCoeffs[cB2][kCurrent] * x - filterCoeffs[cA2][kCurrent] * y;
 	
 	interpolator->process();
 	return y;

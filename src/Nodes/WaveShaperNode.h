@@ -13,6 +13,7 @@
 #ifndef WAVESHAPER_H
 #define WAVESHAPER_H
 
+
 class WaveShaperNode : public AudioNode {
 
 public:

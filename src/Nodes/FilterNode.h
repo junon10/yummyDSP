@@ -13,6 +13,7 @@
 #ifndef FILTER_H
 #define FILTER_H
 
+
 class FilterNode : public AudioNode {
 
 	enum coeffs {
@@ -38,6 +39,7 @@ public:
 	void begin(int sampleRate, int channelCount);
 
 	void setupFilter(int type, float f0, float BW, bool smooth = false, bool resetStates = true);
+    void resetFilter(int type, float f0, float BW, bool smooth = false, bool resetStates = true);
 	void updateFilter(float f0);
 	float processSample(float sample, int channel);
 
@@ -46,7 +48,6 @@ public:
 
 protected:
 	int fs; // sample rate
-	float div_fs; // fs reciprocal 
 	Interpolator *interpolator;
 
 

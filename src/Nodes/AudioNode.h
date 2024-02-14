@@ -9,7 +9,8 @@
 #define AUDIONODE
 
 #include <stdio.h>
-	
+#include "dspHelpers.h"
+
 class AudioNode {
 public:
 	virtual ~AudioNode() {};

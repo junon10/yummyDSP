@@ -8,8 +8,6 @@
 
 #include <Nodes/MixerNode.h>
 
-#include "dspHelpers.h"
-
 MixerNode::MixerNode() {
 	; // be sure to call begin(fs)
 }
@@ -48,5 +46,5 @@ void MixerNode::setVolume(float vol, bool fade) {
 
 void MixerNode::setVolumedB(float dB, bool fade) {
 	float x = constrain(dB, -120.f, 0.f);
-	setVolume(pow(10, x * 0.05f), fade);
+	setVolume(pow(10, x / 20.f), fade);
 }

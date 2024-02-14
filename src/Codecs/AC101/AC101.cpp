@@ -186,8 +186,7 @@ int AC101::setup(int fs, int channelCount, int bitClkPin, int lrClkPin, int data
 	SetVolumeHeadphone(volume);
 
 	int mclk_fs = 512;
-	// i2s_comm_format_t comm_fmt = (i2s_comm_format_t)(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB); // depricated
-	i2s_comm_format_t comm_fmt = (i2s_comm_format_t)(I2S_COMM_FORMAT_STAND_I2S);
+	i2s_comm_format_t comm_fmt = (i2s_comm_format_t)(I2S_COMM_FORMAT_I2S | I2S_COMM_FORMAT_I2S_MSB);
 	int err = setFormat(fs, channelCount, I2S_BITS_PER_SAMPLE_32BIT, comm_fmt, CODEC_I2S_ALIGN, mclk_fs);
 	err += setPins(bitClkPin, lrClkPin, dataOutPin, dataInPin, enablePin);
 	err += start();
@@ -249,7 +248,7 @@ bool AC101::begin(int fs)
 	ok &= WriteReg(OMIXER_SR, 0x0081);
 	ok &= WriteReg(OMIXER_DACA_CTRL, 0xf080);
 
-	ok &= SetMode(MODE_ADC_DAC);
+	ok &= SetMode( MODE_ADC_DAC);
 
 	return ok;
 }
@@ -344,22 +343,16 @@ bool AC101::SetMode(Mode_t mode)
 	{
 		ok &= WriteReg(ADC_SRC, 0x0408);
 		ok &= WriteReg(ADC_DIG_CTRL, 0x8000);
-		ok &= WriteReg(ADC_APC_CTRL, 0xbb00);
-	}
-	if (MODE_MIC == mode)
-	{
-		ok &= WriteReg(ADC_SRC, 0x2020);
-		ok &= WriteReg(ADC_DIG_CTRL, 0x8000);
-		ok &= WriteReg(ADC_APC_CTRL, 0xbbc3);
+		ok &= WriteReg(ADC_APC_CTRL, 0x3bc0);
 	}
 
-	if ((MODE_ADC == mode) or (MODE_ADC_DAC == mode))
+	if ((MODE_ADC == mode) or (MODE_ADC_DAC == mode) or (MODE_LINE == mode))
 	{
 		ok &= WriteReg(MOD_CLK_ENA,  0x800c);
 		ok &= WriteReg(MOD_RST_CTRL, 0x800c);
 	}
 
-	if ((MODE_DAC == mode) or (MODE_ADC_DAC == mode))
+	if ((MODE_DAC == mode) or (MODE_ADC_DAC == mode) or (MODE_LINE == mode))
 	{
 		// Enable Headphone output
 		ok &= WriteReg(OMIXER_DACA_CTRL, 0xff80);

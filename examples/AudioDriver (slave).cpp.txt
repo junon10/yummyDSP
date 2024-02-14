@@ -5,24 +5,23 @@
  * 	gary@ib-gru.de
  *
  *
- *  Corrections: Junon Matta
- *  Date: 2021/11/18 20:42
- *  New Settings: Set Slave Mode and 24 bits
+ *  2nd Author: Junon Matta
+ *  Date: 2021/02/21
+ *  New Settings: Set Slave Mode and 24 bits 
  *
  */
 #include "AudioDriver.h"
 
-const float AudioDriver::ScaleFloat2Int = 8388608.f; // 2^23 
-const float AudioDriver::ScaleInt2Float = 0.0000000004656612873077392578125f; // 1 / 2^31 
+const float AudioDriver::ScaleFloat2Int = 8388608.f; // 2^23 original
+const float AudioDriver::ScaleInt2Float = 0.0000000004656612873077392578125f; // 1 / 2^31 original
 
 // this is a generic I2S setup. If this doesn't match, call setFormat, setPins, etc. seperately
 int AudioDriver::setup(int fs, int channelCount, int bitClkPin, int lrClkPin, int dataOutPin, int dataInPin, int enablePin, i2s_port_t i2sPort) {
-
-    int mclk_fs = 384;
+	int mclk_fs = 384;
 
 	setI2sPort(i2sPort);
 
-    int err = setFormat(fs, channelCount, I2S_BITS_PER_SAMPLE_32BIT, I2S_COMM_FORMAT_I2S, CODEC_LJ_RJ_ALIGN, mclk_fs, I2S_MODE_MASTER | I2S_MODE_RX | I2S_MODE_TX);
+    int err = setFormat(fs, channelCount, I2S_BITS_PER_SAMPLE_24BIT, I2S_COMM_FORMAT_I2S, CODEC_I2S_ALIGN, mclk_fs);
 
 	err += setPins(bitClkPin, lrClkPin, dataOutPin, dataInPin, enablePin);
 	err += start();
@@ -35,13 +34,12 @@ void AudioDriver::setI2sPort(i2s_port_t i2s_port) {
 }
 
 
-int AudioDriver::setFormat(int fs, int channelCount, i2s_bits_per_sample_t bitsPerSample, i2s_comm_format_t format, int alignment, int mclkFactor, int mode)
-{
+int AudioDriver::setFormat(int fs, int channelCount, i2s_bits_per_sample_t bitsPerSample, i2s_comm_format_t format, int alignment, int mclkFactor) {
 	this->fs = fs;
 	this->channelCount = channelCount;
 	
 	static const i2s_config_t i2s_config = {
-			.mode = (i2s_mode_t)(mode),
+			.mode = (i2s_mode_t)(I2S_MODE_SLAVE | I2S_MODE_RX | I2S_MODE_TX),
 			.sample_rate = fs,
 			.bits_per_sample = bitsPerSample,
 			.channel_format = I2S_CHANNEL_FMT_RIGHT_LEFT,
@@ -123,11 +121,10 @@ int AudioDriver::readBlock() {
 
 	int err = i2s_read(i2sPort, (void*) i2sReadBuffer, i2sBufferSize * sizeof(int32_t), &bytesRead, 500);
 
-	//if (err || bytesRead < (i2sBufferSize * sizeof(int32_t))) {
-		//for (int i = 0; i < i2sBufferSize; i++) i2sReadBuffer[i] = 0.f;
-		//Serial.print("I2S read error: ");
-		//Serial.println(bytesRead);
-	//}
+	if (err || bytesRead < (i2sBufferSize * sizeof(int32_t))) {
+		Serial.print("I2S read error: ");
+		Serial.println(bytesRead);
+	}
 	return err;
 }
 
@@ -137,10 +134,9 @@ int AudioDriver::writeBlock() {
 
 	int err = i2s_write(i2sPort, (const char *) i2sWriteBuffer, channelCount * AudioDriver::BufferSize * sizeof(int32_t), &bytesWritten, 500);
 
-	//if (bytesWritten < 1) {
-		//for (int i = 0; i < i2sBufferSize; i++) i2sWriteBuffer[i] = 0.f;
-		//Serial.print("I2S write error: ");
-		//Serial.println(bytesWritten);
-	//}
+	if (bytesWritten < 1) {
+		Serial.print("I2S write error: ");
+		Serial.println(bytesWritten);
+	}
 	return err;
 }

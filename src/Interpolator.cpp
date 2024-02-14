@@ -19,6 +19,12 @@ Interpolator::~Interpolator() {
 	values.clear();
 }
 
+// Junon
+void Interpolator::clear() {
+	values.clear();
+}
+
+
 void Interpolator::begin(int fs, int ms) {
 	samplerate = fs;
 	invFadeSteps = 1.f / ((float)fs / 1000.0f * (float)constrain(ms, 1, 1000)); // e.g. 1440 samples for 30 ms @ 48kHz

@@ -4,19 +4,9 @@
  *  Author: Gary Grutzek
  * 	gary@ib-gru.de
  */
-#define DEBUG_FX
-
-#ifdef DEBUG_FX 
-  #define DEB(...) Serial.print(__VA_ARGS__) 
-  #define DEBF(...) Serial.printf(__VA_ARGS__) 
-  #define DEBUG(...) Serial.println(__VA_ARGS__) 
-#else
-  #define DEB(...)
-  #define DEBF(...)
-  #define DEBUG(...) 
-#endif
 
 #include <Nodes/DelayNode.h>
+
 
 DelayLine::DelayLine() {
 	channelCount = 1;
@@ -25,22 +15,7 @@ DelayLine::DelayLine() {
 
 
 void DelayLine::begin(int channelCount) {
-#ifdef BOARD_HAS_PSRAM 
-	buffer = (float *)ps_malloc(sizeof(float) * MAX_DELAY_LEN);
-	if( buffer == NULL){
-		DEBUG("No more PSRAM for delay!\n");
-	} else {
-		DEBUG("PSRAM buffer allocated for delay");
-	}
-#else
-	buffer = (float *)malloc(sizeof(float) * MAX_DELAY_LEN);
-	if( buffer == NULL){
-		DEBUG("No more RAM for delay!");
-	} else {
-		DEBUG("RAM buffer allocated for delay");
-	}		
-#endif
-	memset(buffer, 0, sizeof(float) * MAX_DELAY_LEN);
+	memset(buffer, 0, sizeof(buffer));
 	this->channelCount = constrain(channelCount, 1, 2);
 	length = MAX_DELAY_LEN / channelCount;
 	writeIndex = 0;
@@ -71,6 +46,8 @@ float DelayLine::pop(int channel) {
 void DelayLine::setSampleDelay(int delay) {
 	sampleDelay = constrain(delay, 0, MAX_DELAY_LEN);
 }
+
+
 
 DelayNode::DelayNode() {
 	; // be sure to call begin(fs)
@@ -137,6 +114,5 @@ void DelayNode::setDelayMs(float ms, bool fade) {
 	interpolator->add(&delayMillis[kCurrent], delayMillis[kTarget]);
 
 	delayLine.setSampleDelay(floor(delayMillis[kCurrent] * fs * 0.001));
-	DEBF("delay %5.3f\r\n", ms);
 }
 

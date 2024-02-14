@@ -29,6 +29,7 @@ public:
 	Interpolator(int fs, int ms);
 	~Interpolator();
 	
+    void clear();// Junon
 	void begin(int fs, int ms);
 	void add(float *current, float target);
 	void process();
